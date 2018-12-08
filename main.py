@@ -8,6 +8,7 @@ from collectors.stock_basic import StockBasicCollector
 from collectors.stock_company import StockCompanyCollector
 from collectors.income import IncomeCollector
 
+
 def getCollector(collector_class):
     collector = collector_class(token=TUSHARE_TOKEN,
                                 server_ip=MONGODB_SERVER_IP,
@@ -17,14 +18,15 @@ def getCollector(collector_class):
                                 database_name=STOCK_DATABASE)
     return collector
 
+
 if __name__ == '__main__':
     initializeLogger()
     initializeDefaultExceptionHandler()
     logging.info('***********************************************************')
 
-    collector = getCollector(IncomeCollector)
-    collector.update()
     collector = getCollector(StockBasicCollector)
     collector.update()
     collector = getCollector(StockCompanyCollector)
+    collector.update()
+    collector = getCollector(IncomeCollector)
     collector.update()

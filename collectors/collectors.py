@@ -9,7 +9,8 @@ from distutils.version import LooseVersion
 
 import tushare
 from pymongo import MongoClient
-from pymongo.errors import WriteError
+from pymongo.errors import WriteError, OperationFailure
+from pymongo import ASCENDING, DESCENDING
 from copy import deepcopy
 
 
@@ -81,10 +82,7 @@ class TushareMongodbBaseCollector(object):
         return True if set(old_record.items()) ^ set(new_record.items()) else False
 
     def getRecordId(self, record):
-        record_id = deepcopy(self._primary_key)
-        for key in record_id:
-            record_id['key'] = record[key]
-        return record_id
+        return {i[0]: record[i[0]] for i in self._primary_key.items()}
 
     def updateCollection(self, data):
         '''更新数据到MongoDB数据库集合中
@@ -109,7 +107,7 @@ class TushareMongodbBaseCollector(object):
                     e, record_id, old_record, record))
                 raise e
 
-            if (not old_record) or self.compareRecord(record, old_record):
+            if (not old_record) or self.compareRecord(record, old_record) > 0:
                 operation = 'insert' if not old_record else 'replace'
                 if operation == 'insert':
                     insert_count += 1
@@ -154,13 +152,24 @@ class TushareMongodbBaseCollector(object):
         collection = db[collection_name]
 
         if self._primary_key:
-            collection.create_index(self._primary_key, unique=True)
+            primary_key = []
+            for i in self._primary_key.items():
+                primary_key.append((i[0],
+                                    DESCENDING if i[1] < 0 else ASCENDING))
+            try:
+                collection.create_index(primary_key, unique=True)
+            except OperationFailure as e:
+                logging.debug(e)
 
         if self._log_collection_operation:
             self._collection_log = db[collection_name + '_log']
-            self._collection_log.create_index({'time': 1})
+            try:
+                self._collection_log.create_index([('time', ASCENDING)])
+            except OperationFailure as e:
+                logging.debug(e)
 
         self._collection = collection
+        return collection
 
     def logOperation(self, operation, result, detail):
         now = datetime.now()
@@ -186,7 +195,7 @@ class TushareMongodbBaseCollector(object):
                 operation, result, now, old_record))
 
     def update(self):
-        raise NotImplementedError('update not implemented!')
+        raise NotImplementedError('not implemented!')
 
     def deleteOldRecordsByUpdateTime(self, t):
         if not self._insert_update_time:

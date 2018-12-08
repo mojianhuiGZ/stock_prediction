@@ -14,8 +14,10 @@ class {{ class_name | camel }}Collector(TushareMongodbBaseCollector):
     def __init__(self, token, server_ip, server_port,
                  username, password, database_name):
         super().__init__(token, server_ip, server_port,
-                         username, password, database_name)
-
+                         username, password, database_name,
+                         primary_key=None, # TODO
+                         insert_update_time=True,
+                         log_collection_operation=True)
         self.validator = {{ validator }}
 
     def get{{ api_name | camel }}(self):
@@ -35,11 +37,11 @@ class {{ class_name | camel }}Collector(TushareMongodbBaseCollector):
         logging.info('mongodb database and collection: {}.{}'.format(
             self.getDatabaseName(), {{ class_name | camel }}Collector.collection_name))
 
-        collection = self.openDatabase({{ class_name | camel }}Collector.collection_name, self.validator)
+        self.openCollection({{ class_name | camel }}Collector.collection_name, self.validator)
 
         logging.info('update to mongodb database ...')
 
-        insert_count, replace_count, delete_count = self.updateDatabase(data, collection)
+        insert_count, replace_count = self.updateCollection(data)
 
-        logging.info('update {{ collection_name }} finished: {} checked {} inserted {} replaced {} deleted!'.format(
-                         len(data), insert_count, replace_count, delete_count))
+        logging.info('update {{ collection_name }} finished: {} checked, {} inserted, {} replaced'.format(
+                         len(data), insert_count, replace_count))

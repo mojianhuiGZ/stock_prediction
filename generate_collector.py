@@ -92,7 +92,7 @@ def generate_collector(url, output_file):
                       collection_name=api,
                       api_name=api,
                       query_command=query_command,
-                      validator=validator)
+                      validator=None)
 
     with open(output_file, 'w') as f:
         f.write(result)
